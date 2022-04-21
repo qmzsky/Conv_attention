@@ -413,8 +413,8 @@ def main(args):
         #     num_training_steps_per_epoch=num_training_steps_per_epoch, update_freq=args.update_freq,
         #     use_amp=args.use_amp
         # )
-        time.sleep(10)
-        print(epoch+":")
+        time.sleep(5)
+        print(epoch,":")
         if args.output_dir and args.save_ckpt:
             print("begin to save")
             if (epoch + 1) % args.save_ckpt_freq == 0 or epoch + 1 == args.epochs:
