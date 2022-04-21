@@ -283,8 +283,7 @@ def main(args):
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
     model = create_ConvNextPlus(
-        args.model,
-        pretrained=False, 
+        pretrained=False,
         num_classes=args.nb_classes, 
         drop_path_rate=args.drop_path,
         layer_scale_init_value=args.layer_scale_init_value,
