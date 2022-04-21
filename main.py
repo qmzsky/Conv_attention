@@ -405,23 +405,21 @@ def main(args):
             log_writer.set_step(epoch * num_training_steps_per_epoch * args.update_freq)
         if wandb_logger:
             wandb_logger.set_steps()
-        # train_stats = train_one_epoch(
-        #     model, criterion, data_loader_train, optimizer,
-        #     device, epoch, loss_scaler, args.clip_grad, model_ema, mixup_fn,
-        #     log_writer=log_writer, wandb_logger=wandb_logger, start_steps=epoch * num_training_steps_per_epoch,
-        #     lr_schedule_values=lr_schedule_values, wd_schedule_values=wd_schedule_values,
-        #     num_training_steps_per_epoch=num_training_steps_per_epoch, update_freq=args.update_freq,
-        #     use_amp=args.use_amp
-        # )
-        time.sleep(5)
-        print(epoch,":")
+        train_stats = train_one_epoch(
+            model, criterion, data_loader_train, optimizer,
+            device, epoch, loss_scaler, args.clip_grad, model_ema, mixup_fn,
+            log_writer=log_writer, wandb_logger=wandb_logger, start_steps=epoch * num_training_steps_per_epoch,
+            lr_schedule_values=lr_schedule_values, wd_schedule_values=wd_schedule_values,
+            num_training_steps_per_epoch=num_training_steps_per_epoch, update_freq=args.update_freq,
+            use_amp=args.use_amp
+        )
+
         if args.output_dir and args.save_ckpt:
-            print("begin to save")
             if (epoch + 1) % args.save_ckpt_freq == 0 or epoch + 1 == args.epochs:
                 utils.save_model(
                     args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                     loss_scaler=loss_scaler, epoch=epoch, model_ema=model_ema)
-                print("save")
+
         if data_loader_val is not None:
             test_stats = evaluate(data_loader_val, model, device, use_amp=args.use_amp)
             print(f"Accuracy of the model on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%")
