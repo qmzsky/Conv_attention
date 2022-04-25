@@ -253,13 +253,16 @@ class ConvNeXtPlus(nn.Module):
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
     """
     def __init__(self, in_chans=3, num_classes=1000,
-                 depths=[3, 2, 8, 2], dims=[96, 192, 384, 768], drop_path_rate=0.,
-                 layer_scale_init_value=1e-6, head_init_scale=1., window_size = 7
+                 depths=[3, 3, 9, 2], dims=[96, 192, 384, 768], drop_path_rate=0.,
+                 layer_scale_init_value=1e-6, head_init_scale=1., window_size = 7,
+                 head_nums=[6,12,24]
                  ):
         super().__init__()
 
         self.dims = dims
         self.window_size = window_size
+        self.head_nums = head_nums
+
 
         self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
@@ -288,7 +291,7 @@ class ConvNeXtPlus(nn.Module):
         self.attentions = nn.ModuleList()
 
         for i in range(3):
-            window_attention = WindowAttention(dim=dims[i+1])
+            window_attention = WindowAttention(dim=dims[i+1],num_heads=self.head_nums[i])
             self.attentions.append(window_attention)
 
         self.norm = nn.LayerNorm(dims[-1], eps=1e-6) # final norm layer
@@ -308,7 +311,7 @@ class ConvNeXtPlus(nn.Module):
         for i in range(4):
             x = self.downsample_layers[i](x)
             x = self.stages[i](x)
-            if i >= 1:
+            if i >= 2:
                 B,C,H,W = x.shape
                 x = x.permute(0,2,3,1)
                 x_windows = window_partition(x, self.window_size)
