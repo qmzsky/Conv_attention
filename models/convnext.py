@@ -382,9 +382,6 @@ class SwinTransformerBlock(nn.Module):
         flops += self.dim * H * W
         return flops
 
-
-
-
 class ConvNeXtPlus(nn.Module):
     r""" ConvNeXt
         A PyTorch impl of : `A ConvNet for the 2020s`  -
@@ -474,6 +471,59 @@ class ConvNeXtPlus(nn.Module):
         x = self.forward_features(x)
         x = self.head(x)
         return x
+
+class ConvNextAttention(ConvNeXt):
+
+    def __init__(self, in_chans=3, num_classes=1000,
+                 depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], drop_path_rate=0.,
+                 change_stages = [[],[],[8],[2]],
+                 layer_scale_init_value=1e-6, head_init_scale=1., window_size = 7,
+                 head_nums=[6,6,12,12], resolutions=[56,28,14,7],
+                 transfer = ""
+                 ):
+        super().__init__(in_chans, num_classes,
+                 depths, dims, drop_path_rate,
+                 layer_scale_init_value, head_init_scale)
+
+        self.dims = dims
+        self.window_size = window_size
+        self.head_nums = head_nums
+        self.resolutions = resolutions
+        self.depths = depths
+
+        #init from pretrained ConvNext
+        if transfer:
+            check_point = torch.load(transfer,map_location="cpu")
+            self.load_state_dict(check_point['model'])
+            print("load success")
+        for i in range(4):
+            for stage in change_stages[i]:
+                self.stages[i][stage] = SwinTransformerBlock(dim=dims[i],
+                                                    input_resolution=[self.resolutions[i], self.resolutions[i]],
+                                                    num_heads=self.head_nums[i])
+
+    def _init_weights(self, m):
+        if isinstance(m, (nn.Linear)):
+            trunc_normal_(m.weight, std=.02)
+            nn.init.constant_(m.bias, 0)
+
+    def forward_features(self, x):
+        for i in range(4):
+            x = self.downsample_layers[i](x)
+            for j in range(self.depths[i]):
+                if(isinstance(self.stages[i][j], SwinTransformerBlock)):
+                    B, C, H, W = x.shape
+                    x = x.permute(0, 2, 3, 1)
+                    x_windows = x.view(B, H*W, C)
+                    attn_windows = self.stages[i][j](x_windows)
+                    attn_windows = attn_windows.view(B, H, W, C)
+                    x = attn_windows.permute(0, 3, 1, 2)
+                else:
+                    x = self.stages[i][j](x)
+
+
+
+        return self.norm(x.mean([-2, -1])) # global average pooling, (N, C, H, W) -> (N, C)
 
 
 model_urls = {
