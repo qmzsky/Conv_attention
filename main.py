@@ -29,7 +29,7 @@ from engine import train_one_epoch, evaluate
 
 from utils import NativeScalerWithGradNormCount as NativeScaler
 import utils
-from models.convnext import ConvNeXtPlus
+from models.convnext import ConvNeXtPlus,SwinTransformerBlock
 import models.convnext
 import models.convnext_isotropic
 
@@ -362,11 +362,28 @@ def main(args):
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=False)
         model_without_ddp = model.module
-
-    optimizer = create_optimizer(
-        args, model_without_ddp, skip_list=None,
-        get_num_layer=assigner.get_layer_id if assigner is not None else None, 
-        get_layer_scale=assigner.get_scale if assigner is not None else None)
+    if args.model == "convNextPlus":
+        all_parameters = set(model.parameters())
+        swin_blocks = []
+        for m in model.modules():
+            if isinstance(m,SwinTransformerBlock):
+                swin_blocks += list(m.parameters())
+        swin_blocks = set(swin_blocks)
+        rest_blocks = all_parameters-swin_blocks
+        swin_blocks = list(swin_blocks)
+        rest_blocks = list(rest_blocks)
+        optimizer = torch.optim.AdamW(
+            [{"params":swin_blocks,"lr_scale":1},
+             {"params":rest_blocks,"lr_scale":0.1}],
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            eps=args.opt_eps
+        )
+    else:
+        optimizer = create_optimizer(
+            args, model_without_ddp, skip_list=None,
+            get_num_layer=assigner.get_layer_id if assigner is not None else None,
+            get_layer_scale=assigner.get_scale if assigner is not None else None)
 
     loss_scaler = NativeScaler() # if args.use_amp is False, this won't be used
 
