@@ -29,7 +29,7 @@ from engine import train_one_epoch, evaluate
 
 from utils import NativeScalerWithGradNormCount as NativeScaler
 import utils
-from models.convnext import ConvNeXtPlus,SwinTransformerBlock
+from models.convnext import ConvNeXtPlus,ConvNextAttention,SwinTransformerBlock
 import models.convnext
 import models.convnext_isotropic
 
@@ -53,6 +53,12 @@ def create_ConvNextPlus(pretrained=False,path="./checkpoint", **kwargs):
         model.load_state_dict(torch.load(path))
     return model
 
+def create_ConvNextAttention(pretrained=False,path="./checkpoint", **kwargs):
+    model = ConvNextAttention(**kwargs)
+    if pretrained:
+        model.load_state_dict(torch.load(path))
+    return model
+
 def get_args_parser():
     parser = argparse.ArgumentParser('ConvNeXt training and evaluation script for image classification', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
@@ -70,6 +76,8 @@ def get_args_parser():
                         help='image input size')
     parser.add_argument('--layer_scale_init_value', default=1e-6, type=float,
                         help="Layer scale initial values")
+
+    parser.add_argument('--transfer', type=str, default="../pth/convnext_tiny_1k_224_ema.pth")
 
     # EMA related parameters
     parser.add_argument('--model_ema', type=str2bool, default=False)
@@ -283,12 +291,13 @@ def main(args):
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
     if args.model == "convNextPlus":
-        model = create_ConvNextPlus(
+        model = create_ConvNextAttention(
             pretrained=False,
             num_classes=args.nb_classes,
             drop_path_rate=args.drop_path,
             layer_scale_init_value=args.layer_scale_init_value,
             head_init_scale=args.head_init_scale,
+            transfer = args.transfer
             )
     else:
         model = create_model(
@@ -364,16 +373,16 @@ def main(args):
         model_without_ddp = model.module
     if args.model == "convNextPlus":
         all_parameters = set(model.parameters())
-        swin_blocks = []
+        change_blocks = []
         for m in model.modules():
             if isinstance(m,SwinTransformerBlock):
-                swin_blocks += list(m.parameters())
-        swin_blocks = set(swin_blocks)
-        rest_blocks = all_parameters-swin_blocks
-        swin_blocks = list(swin_blocks)
+                change_blocks += list(m.parameters())
+        change_blocks = set(change_blocks)
+        rest_blocks = all_parameters-change_blocks
+        change_blocks = list(change_blocks)
         rest_blocks = list(rest_blocks)
         optimizer = torch.optim.AdamW(
-            [{"params":swin_blocks,"lr_scale":1},
+            [{"params":change_blocks,"lr_scale":1},
              {"params":rest_blocks,"lr_scale":0.1}],
             lr=args.lr,
             weight_decay=args.weight_decay,
