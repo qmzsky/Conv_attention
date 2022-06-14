@@ -374,6 +374,8 @@ def main(args):
     if args.model == "convNextPlus":
         all_parameters = set(model.parameters())
         change_blocks = []
+        change_blocks += list(model.head.parameters())
+        change_blocks += list(model.norm.parameters())
         for m in model.modules():
             if isinstance(m,SwinTransformerBlock):
                 change_blocks += list(m.parameters())
