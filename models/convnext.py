@@ -115,6 +115,7 @@ class ConvNeXt(nn.Module):
         self.head = nn.Linear(dims[-1], num_classes)
 
         self.apply(self._init_weights)
+        print("apply")
         self.head.weight.data.mul_(head_init_scale)
         self.head.bias.data.mul_(head_init_scale)
 
@@ -381,6 +382,9 @@ class SwinTransformerBlock(nn.Module):
         # norm2
         flops += self.dim * H * W
         return flops
+
+class MyHead(nn.Module):
+    1
 
 class ConvNeXtPlus(nn.Module):
     r""" ConvNeXt
