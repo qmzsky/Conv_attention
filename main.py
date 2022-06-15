@@ -373,11 +373,16 @@ def main(args):
         model_without_ddp = model.module
     if args.model == "convNextPlus":
         all_parameters = set(model.parameters())
+        all_list = list(model.modules())
+
         change_blocks = []
         for m in model.modules():
             if isinstance(m,SwinTransformerBlock):
                 change_blocks += list(m.parameters())
-        change_blocks += list(m.parameters())
+
+        change_blocks += list(all_list[-1].parameters())
+        change_blocks += list(all_list[-2].parameters())
+
         change_blocks = set(change_blocks)
         rest_blocks = all_parameters-change_blocks
         change_blocks = list(change_blocks)
