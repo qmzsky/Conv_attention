@@ -482,7 +482,7 @@ class ConvNextAttention(ConvNeXt):
     #s
     def __init__(self, in_chans=3, num_classes=1000,
                  depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], drop_path_rate=0.,
-                 change_stages = [[],[],[8],[2]],
+                 change_stages = [[],[8],[8],[2]],
                  layer_scale_init_value=1e-6, head_init_scale=1., window_size = 7,
                  head_nums=[6,6,12,12], resolutions=[56,28,14,7],
                  transfer = ""
